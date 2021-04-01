@@ -1,14 +1,15 @@
 .DEFAULT_GOAL := default
 
-# Returns makefile directory path.
+# Return makefile directory path.
 CWD := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 
 # Docker image providing static analysis tools for PHP.
 IMAGE_NAME := 'jakzal/phpqa'
 IMAGE_TAG := 'php7.4-alpine'
 
-yaml:
-	$(call run, yaml-lint $(shell find -regex '\(.*yaml\|.*yml\)'))
+# YAML-LINT. A compact command line utility for checking YAML file syntax. (https://github.com/j13k/yaml-lint)
+yaml-lint:
+	$(call run, find -regex '\(.*yaml\|.*yml\)' -print0 | xargs -0 yaml-lint)
 
 # PHP CodeSniffer. Detects coding standard violations. (https://github.com/squizlabs/PHP_CodeSniffer)
 phpcs:
@@ -22,6 +23,10 @@ phpcbf:
 phpcpd:
 	$(call run, phpcpd src)
 
+# PHP Mess Detector. A tool for finding problems in PHP code. (https://phpmd.org/)
+phpmd:
+	$(call run, phpmd src ansi cleancode,codesize,controversial,design,naming,unusedcode)
+
 # PHPLOC. Measuring the size and analyzing the structure of a PHP project. (https://github.com/sebastianbergmann/phploc)
 phploc:
 	$(call run, phploc src)
@@ -34,8 +39,8 @@ phpstan:
 phpunit:
 	$(call run, phpunit-7 tests --bootstrap vendor/autoload.php)
 
-default: yaml phpcs phpcpd phpstan phpunit
+default: yaml-lint phpcs phpcpd phpmd phpstan phpunit
 
 define run
-    docker run -it --rm --volume $(CWD):/project --workdir /project $(IMAGE_NAME):$(IMAGE_TAG) $(1)
+    docker run -it --rm --volume $(CWD):/project --workdir /project $(IMAGE_NAME):$(IMAGE_TAG) /bin/ash -c "$(1)"
 endef
